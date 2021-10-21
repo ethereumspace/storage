@@ -23,8 +23,8 @@ struct Db {
 }
 
 /// Add transaction
-#[update]
-fn createTransaction(metadata: metadata::Metadata) -> Result<(), String> {
+#[update(name = createTransaction)]
+fn create_transaction(metadata: metadata::Metadata) -> Result<(), String> {
     let position: usize;
     unsafe {
         Transaction.push(metadata.clone());
