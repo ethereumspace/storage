@@ -130,6 +130,39 @@ async fn get_caller_transaction(
     }
 }
 
+#[query(name = "getLastTransaction")]
+async fn get_last_transaction(limit: Nat) -> Vec<metadata::Metadata> {
+    let limit = util::nat_to_u64(limit).unwrap() as usize;
+    unsafe {
+        let len = Transaction.len();
+        if len <= limit {
+            return Transaction.to_vec();
+        }
+        return Transaction[len - limit - 1..len - 1].to_vec();
+    }
+}
+
+#[query(name = "getCanisterLastTransaction")]
+async fn get_canister_last_transaction(canister: String, limit: Nat) -> Vec<metadata::Metadata> {
+    let limit = util::nat_to_u64(limit).unwrap() as usize;
+    let canister_transaction = storage::get::<CanisterTransaction>();
+    let transaction = canister_transaction.get(&canister).unwrap();
+    let len = transaction.len();
+    let mut result: Vec<metadata::Metadata> = vec![];
+    unsafe {
+        if len <= limit {
+            for i in transaction.iter() {
+                result.push(Transaction[*i].clone())
+            }
+            return result;
+        }
+        for j in transaction[len - limit - 1..len - 1].iter() {
+            result.push(Transaction[*j].clone())
+        }
+        return result;
+    }
+}
+
 /// Before the upgrade task starts, you need to persist the data in memory
 #[pre_upgrade]
 fn pre_upgrade() {

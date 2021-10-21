@@ -18,6 +18,8 @@ variant {
 
 service :{
     "createTransaction": (Metadata) -> (Result);
-    "getCanisterTransaction":(text,nat,nat) ->(vec Metadata);
-    "getCallerTransaction":(text,nat,nat) ->(vec Metadata);
+    "getCanisterTransaction":(text,nat,nat) ->(vec Metadata) query;
+    "getCallerTransaction":(text,nat,nat) ->(vec Metadata) query;
+    "getLastTransaction":(nat) -> (vec Metadata) query;
+    "getCanisterLastTransaction":(text,nat) -> (vec Metadata) query;
 }
