@@ -212,7 +212,7 @@ dependencies = [
 [[package]]
 name = "context"
 version = "0.1.0"
-source = "git+https://github.com/0x000000000000000/context.git#cea3ddc0cadc2887fd449bc366698f087209d827"
+source = "git+https://github.com/0x000000000000000/context.git#7e7e198bb0d114a321f63c8a3b6d228be91a5745"
 dependencies = [
  "hyper 0.10.16",
  "ic-cdk",
