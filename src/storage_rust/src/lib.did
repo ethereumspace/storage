@@ -1,0 +1,23 @@
+
+
+type Metadata =
+ record {
+   canister: text;
+   caller: text;
+   fee: nat;
+   method_name: text;
+   transaction_time: nat;
+   stable_size: nat;
+ };
+
+type Result =
+variant {
+    Ok : record {};
+    Err : text;
+};
+
+service :{
+    "createTransaction": (Metadata) -> (Result);
+    "getCanisterTransaction":(text,nat,nat) ->(vec Metadata);
+    "getCallerTransaction":(text,nat,nat) ->(vec Metadata);
+}

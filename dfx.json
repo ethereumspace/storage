@@ -1,0 +1,19 @@
+{
+  "canisters": {
+    "storage_rust": {
+      "build": "cargo build --target wasm32-unknown-unknown --package storage_rust --release",
+      "candid": "src/storage_rust/src/lib.did",
+      "wasm": "target/wasm32-unknown-unknown/release/storage_rust.wasm",
+      "type": "custom"
+    }
+  },
+
+  "dfx": "0.8.1",
+  "networks": {
+    "local": {
+      "bind": "127.0.0.1:8001",
+      "type": "ephemeral"
+    }
+  },
+  "version": 1
+}
