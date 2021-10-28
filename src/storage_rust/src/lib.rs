@@ -1,77 +1,75 @@
 use context::{metadata, util};
 use ic_cdk::export::candid::Nat;
+use ic_cdk::export::Principal;
 use ic_cdk::export::candid::{CandidType, Deserialize};
 use ic_cdk::print;
 use ic_cdk::storage;
 use ic_cdk_macros::*;
 use std::collections::HashMap;
-type CanisterTransaction = HashMap<String, Vec<usize>>;
-type CallerTransaction = HashMap<String, Vec<usize>>;
-static mut Transaction: Vec<metadata::Metadata> = vec![];
+mod config;
+type CanisterEvent = HashMap<Principal, Vec<usize>>;
+type CallerEvent = HashMap<Principal, Vec<usize>>;
+static mut Event: Vec<metadata::Metadata> = vec![];
 
 #[derive(CandidType, Deserialize)]
 struct Snapshot<T> {
-    key: String,
+    key: Principal,
     value: T,
 }
 
 #[derive(CandidType, Deserialize)]
 struct Db {
-    canisterTransaction: Vec<Snapshot<Vec<usize>>>,
-    callerTransaction: Vec<Snapshot<Vec<usize>>>,
-    transacton: Vec<metadata::Metadata>,
+    canisterEvent: Vec<Snapshot<Vec<usize>>>,
+    callerEvent: Vec<Snapshot<Vec<usize>>>,
+    event: Vec<metadata::Metadata>,
 }
 
 /// Add transaction
-#[update(name = createTransaction)]
-fn create_transaction(metadata: metadata::Metadata) -> Result<(), String> {
+#[update(name = "createEvent")]
+fn create_event(metadata: metadata::Metadata) -> Result<(), String> {
     let position: usize;
     unsafe {
-        Transaction.push(metadata.clone());
-        position = Transaction.len() - 1;
+        Event.push(metadata.clone());
+        position = Event.len() - 1;
     }
-    let canister_transaction = storage::get_mut::<CanisterTransaction>();
-    if !canister_transaction.contains_key(&metadata.canister) {
-        canister_transaction.insert(metadata.canister.clone(), vec![position]);
+    let canister_event = storage::get_mut::<CanisterEvent>();
+    if !canister_event.contains_key(&metadata.canister) {
+        canister_event.insert(metadata.canister.clone(), vec![position]);
     }
-    let caller_transaction = storage::get_mut::<CallerTransaction>();
-    if !caller_transaction.contains_key(&metadata.caller) {
-        caller_transaction.insert(metadata.caller.clone(), vec![position]);
+    let caller_event = storage::get_mut::<CallerEvent>();
+    if !caller_event.contains_key(&metadata.caller) {
+        caller_event.insert(metadata.caller.clone(), vec![position]);
         return Ok(());
     }
 
-    canister_transaction
+    canister_event
         .get_mut(&metadata.canister)
         .unwrap()
         .push(position);
-    caller_transaction
+    caller_event
         .get_mut(&metadata.caller)
         .unwrap()
         .push(position);
 
-    let len = canister_transaction.get(&metadata.canister).unwrap().len();
+    let len = canister_event.get(&metadata.canister).unwrap().len();
     let info = format!("count {}", len);
     print(info);
     Ok(())
 }
 
-#[query(name = "getCanisterTransaction")]
-async fn get_canister_transaction(
-    canister: String,
-    offset: Nat,
-    limit: Nat,
-) -> Vec<metadata::Metadata> {
+#[query(name = "getCanisterEvent")]
+async fn get_canister_event(canister: Principal, offset: Nat, limit: Nat) -> Vec<metadata::Metadata> {
     let offset = util::nat_to_u64(offset).unwrap() as usize;
     let mut limit = util::nat_to_u64(limit).unwrap() as usize;
     if limit > 50 {
         limit = 50;
     }
-    let canister_transaction = storage::get::<CanisterTransaction>();
-    if !canister_transaction.contains_key(&canister) {
+    let canister_event = storage::get::<CanisterEvent>();
+    if !canister_event.contains_key(&canister) {
         print("canister not exist");
         return vec![];
     }
-    let blucket = canister_transaction.get(&canister).unwrap();
+    let blucket = canister_event.get(&canister).unwrap();
     let info = format!("count {},{},{}", blucket.len(), offset, limit);
     if offset > blucket.len() {
         return vec![];
@@ -80,36 +78,32 @@ async fn get_canister_transaction(
     unsafe {
         if offset + limit > blucket.len() {
             for i in blucket[offset..info.len()].iter() {
-                container.push(Transaction[*i].clone());
+                container.push(Event[*i].clone());
             }
             return container;
         }
 
         for i in blucket[offset..offset + limit].iter() {
-            container.push(Transaction[*i].clone());
+            container.push(Event[*i].clone());
         }
         return container;
     }
 }
 
 /// Get caller transaction transaction record information
-#[query(name = "getCallerTransaction")]
-async fn get_caller_transaction(
-    caller: String,
-    offset: Nat,
-    limit: Nat,
-) -> Vec<metadata::Metadata> {
+#[query(name = "getCallerEvent")]
+async fn get_caller_event(caller: Principal, offset: Nat, limit: Nat) -> Vec<metadata::Metadata> {
     let offset = util::nat_to_u64(offset).unwrap() as usize;
     let mut limit = util::nat_to_u64(limit).unwrap() as usize;
     if limit > 50 {
         limit = 50;
     }
-    let caller_transaction = storage::get::<CallerTransaction>();
-    if !caller_transaction.contains_key(&caller) {
+    let caller_event = storage::get::<CallerEvent>();
+    if !caller_event.contains_key(&caller) {
         print("canister not exist");
         return vec![];
     }
-    let blucket = caller_transaction.get(&caller).unwrap();
+    let blucket = caller_event.get(&caller).unwrap();
     let info = format!("count {},{},{}", blucket.len(), offset, limit);
     if offset > blucket.len() {
         return vec![];
@@ -118,79 +112,92 @@ async fn get_caller_transaction(
     unsafe {
         if offset + limit > blucket.len() {
             for i in blucket[offset..info.len()].iter() {
-                container.push(Transaction[*i].clone());
+                container.push(Event[*i].clone());
             }
             return container;
         }
 
         for i in blucket[offset..offset + limit].iter() {
-            container.push(Transaction[*i].clone());
+            container.push(Event[*i].clone());
         }
         return container;
     }
 }
 
-#[query(name = "getLastTransaction")]
-async fn get_last_transaction(limit: Nat) -> Vec<metadata::Metadata> {
+#[query(name = "getLastEvent")]
+async fn get_last_event(limit: Nat) -> Vec<metadata::Metadata> {
     let limit = util::nat_to_u64(limit).unwrap() as usize;
     unsafe {
-        let len = Transaction.len();
+        let len = Event.len();
         if len <= limit {
-            return Transaction.to_vec();
+            return Event.to_vec();
         }
-        return Transaction[len - limit - 1..len - 1].to_vec();
+        return Event[len - limit - 1..len - 1].to_vec();
     }
 }
 
-#[query(name = "getCanisterLastTransaction")]
-async fn get_canister_last_transaction(canister: String, limit: Nat) -> Vec<metadata::Metadata> {
+#[query(name = "getCanisterLastEvent")]
+async fn get_canister_last_event(canister: Principal, limit: Nat) -> Vec<metadata::Metadata> {
     let limit = util::nat_to_u64(limit).unwrap() as usize;
-    let canister_transaction = storage::get::<CanisterTransaction>();
-    let transaction = canister_transaction.get(&canister).unwrap();
-    let len = transaction.len();
+    let canister_event = storage::get::<CanisterEvent>();
     let mut result: Vec<metadata::Metadata> = vec![];
+    if !canister_event.contains_key(&canister) {
+        return result;
+    }
+    let event = canister_event.get(&canister).unwrap();
+    let len = event.len();
     unsafe {
         if len <= limit {
-            for i in transaction.iter() {
-                result.push(Transaction[*i].clone())
+            for i in event.iter() {
+                result.push(Event[*i].clone())
             }
             return result;
         }
-        for j in transaction[len - limit - 1..len - 1].iter() {
-            result.push(Transaction[*j].clone())
+        for j in event[len - limit - 1..len - 1].iter() {
+            result.push(Event[*j].clone())
         }
         return result;
     }
 }
 
+#[query(name = "getCanisterList")]
+async fn get_canister_list() -> Vec<Principal> {
+    let mut res: Vec<Principal> = vec![];
+    let canister_event = storage::get::<CanisterEvent>();
+    for keys in canister_event.keys() {
+        res.push(keys.clone());
+    }
+    return res;
+}
+
 /// Before the upgrade task starts, you need to persist the data in memory
 #[pre_upgrade]
 fn pre_upgrade() {
-    let mut canister_transction_snapshot: Vec<Snapshot<Vec<usize>>> = vec![];
-    let mut caller_transction_snapshot: Vec<Snapshot<Vec<usize>>> = vec![];
-    let canister_transction = storage::get::<CanisterTransaction>();
-    for (k, v) in canister_transction.iter() {
+    let mut canister_event_snapshot: Vec<Snapshot<Vec<usize>>> = vec![];
+    let mut caller_event_snapshot: Vec<Snapshot<Vec<usize>>> = vec![];
+    let canister_event = storage::get::<CanisterEvent>();
+    for (k, v) in canister_event.iter() {
         let snapshot = Snapshot::<Vec<usize>> {
             key: k.clone(),
             value: v.to_vec(),
         };
-        canister_transction_snapshot.push(snapshot);
+        canister_event_snapshot.push(snapshot);
     }
-    let caller_transction = storage::get::<CallerTransaction>();
+    let caller_event = storage::get::<CallerEvent>();
 
-    for (k, v) in caller_transction.iter() {
+    for (k, v) in caller_event.iter() {
         let snapshot = Snapshot::<Vec<usize>> {
             key: k.clone(),
             value: v.to_vec(),
         };
-        caller_transction_snapshot.push(snapshot);
+        caller_event_snapshot.push(snapshot);
     }
 
     unsafe {
         let db = Db {
-            canisterTransaction: canister_transction_snapshot,
-            callerTransaction: caller_transction_snapshot,
-            transacton: Transaction.to_vec(),
+            canisterEvent: canister_event_snapshot,
+            callerEvent: caller_event_snapshot,
+            event: Event.to_vec(),
         };
         storage::stable_save((db,));
     }
@@ -210,13 +217,13 @@ fn post_update() {
 /// Reload data into memory
 fn data_load(db: Db) {
     unsafe {
-        Transaction = db.transacton;
+        Event = db.event;
     }
-    let canister_transaction = storage::get_mut::<CanisterTransaction>();
-    for i in db.canisterTransaction.into_iter() {
-        canister_transaction.insert(i.key.clone(), i.value);
+    let canister_event = storage::get_mut::<CanisterEvent>();
+    for e in db.canisterEvent.into_iter() {
+        canister_event.insert(e.key.clone(), e.value);
     }
-    for j in db.callerTransaction.into_iter() {
-        canister_transaction.insert(j.key.clone(), j.value);
+    for e in db.callerEvent.into_iter() {
+        canister_event.insert(e.key.clone(), e.value);
     }
 }

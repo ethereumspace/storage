@@ -2,9 +2,9 @@
 
 type Metadata =
  record {
-   canister: text;
-   caller: text;
-   fee: nat;
+   canister: principal;
+   caller: principal;
+   cycle: nat;
    method_name: text;
    transaction_time: nat;
    stable_size: nat;
@@ -17,9 +17,12 @@ variant {
 };
 
 service :{
-    "createTransaction": (Metadata) -> (Result);
-    "getCanisterTransaction":(text,nat,nat) ->(vec Metadata) query;
-    "getCallerTransaction":(text,nat,nat) ->(vec Metadata) query;
-    "getLastTransaction":(nat) -> (vec Metadata) query;
-    "getCanisterLastTransaction":(text,nat) -> (vec Metadata) query;
+    "createEvent": (Metadata) -> (Result);
+    "getCanisterEvent":(principal,nat,nat) ->(vec Metadata) query;
+    "getCallerEvent":(principal,nat,nat) ->(vec Metadata) query;
+    "getLastEvent":(nat) -> (vec Metadata) query;
+    "getCanisterLastEvent":(text,nat) -> (vec Metadata) query;
+    "getCanisterList":() -> (vec principal) query;
 }
+
+
